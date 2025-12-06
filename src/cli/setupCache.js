@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
-import { genAI, waitForFileReady } from "../services/google.js";
+import { genAI } from "../services/google.js";
 import { saveCacheInfo } from "../services/cacheStore.js";
 import fetch from "node-fetch";
 
@@ -114,9 +114,10 @@ async function main() {
         displayName: path.basename(filePath),
       },
     });
-    const ready = await waitForFileReady(upload.file.name);
-    console.log(`Listo: ${ready.uri}`);
-    parts.push({ fileData: { mimeType: ready.mimeType, fileUri: ready.uri } });
+    console.log(`Listo: ${upload.uri}`);
+    parts.push({
+      fileData: { mimeType: upload.mimeType, fileUri: upload.uri },
+    });
   }
 
   console.log("Creando caché de contexto...");
@@ -140,11 +141,6 @@ async function main() {
   }
 
   console.log(`Cache creado: ${cache.name}`);
-  // Quick init check
-  genAI.models.generateContent({
-    model,
-    config: { cachedContent: cache },
-  });
 
   // Persistir información del caché en cache.json para que el servidor/API lo use
   const info = {

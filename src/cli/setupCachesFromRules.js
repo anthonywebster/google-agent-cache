@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
-import { genAI, waitForFileReady } from "../services/google.js";
+import { genAI } from "../services/google.js";
 import { saveCacheInfo } from "../services/cacheStore.js";
 
 dotenv.config();
@@ -71,8 +71,10 @@ async function createCacheFromRule(rule) {
         displayName: path.basename(filePath),
       },
     });
-    const ready = await waitForFileReady(upload.file.name);
-    parts.push({ fileData: { mimeType: ready.mimeType, fileUri: ready.uri } });
+
+    parts.push({
+      fileData: { mimeType: upload.mimeType, fileUri: upload.uri },
+    });
   }
 
   const displayName = rule.id || "Context_Cache";
@@ -86,11 +88,6 @@ async function createCacheFromRule(rule) {
       systemInstruction,
       ttlSeconds,
     },
-  });
-
-  genAI.models.generateContent({
-    model,
-    config: { cachedContent: cache },
   });
 
   const info = {

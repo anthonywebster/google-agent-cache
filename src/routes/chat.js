@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import os from "os";
 import { promises as fs } from "fs";
-import { genAI, waitForFileReady } from "../services/google.js";
+import { genAI } from "../services/google.js";
 import { loadCacheInfo } from "../services/cacheStore.js";
 
 const router = express.Router();
@@ -52,9 +52,8 @@ router.post("/", async (req, res) => {
             displayName: f.displayName || "chat-file",
           },
         });
-        const ready = await waitForFileReady(upload.file.name);
         parts.push({
-          fileData: { mimeType: ready.mimeType, fileUri: ready.uri },
+          fileData: { mimeType: upload.mimeType, fileUri: upload.uri },
         });
       }
     }
@@ -129,9 +128,8 @@ router.post("/upload", upload.array("files", 10), async (req, res) => {
           displayName: f.originalname || "chat-file",
         },
       });
-      const ready = await waitForFileReady(uploadRes.file.name);
       parts.push({
-        fileData: { mimeType: ready.mimeType, fileUri: ready.uri },
+        fileData: { mimeType: uploadRes.mimeType, fileUri: uploadRes.uri },
       });
     }
 

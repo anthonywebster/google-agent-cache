@@ -1,5 +1,5 @@
 import express from "express";
-import { genAI, waitForFileReady } from "../services/google.js";
+import { genAI } from "../services/google.js";
 import {
   saveCacheInfo,
   loadCacheInfo,
@@ -50,7 +50,6 @@ router.post("/setup", async (req, res) => {
         displayName: displayName || "source-file",
       },
     });
-    const readyFile = await waitForFileReady(upload.file.name);
 
     // 2) Create cache
     const cache = await genAI.caches.create({
@@ -64,8 +63,8 @@ router.post("/setup", async (req, res) => {
             parts: [
               {
                 fileData: {
-                  mimeType: readyFile.mimeType,
-                  fileUri: readyFile.uri,
+                  mimeType: upload.mimeType,
+                  fileUri: upload.uri,
                 },
               },
             ],
