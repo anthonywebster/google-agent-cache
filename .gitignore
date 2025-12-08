@@ -52,5 +52,5 @@ Thumbs.db
 *.tsbuildinfo
 
 # Local data sources (do not commit large or private docs)
-data/cache_sources/**/*
+data/**/*
 
