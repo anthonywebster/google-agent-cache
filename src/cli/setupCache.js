@@ -3,45 +3,9 @@ import path from "path";
 import dotenv from "dotenv";
 import { genAI } from "../services/google.js";
 import { saveCacheInfo } from "../services/cacheStore.js";
-import fetch from "node-fetch";
+import { getPdfFiles } from "../utilities/utils.js";
 
 dotenv.config();
-
-// Función para sanitizar strings y eliminar caracteres problemáticos
-function sanitizeString(str) {
-  if (!str) return str;
-
-  return (
-    str
-      // Reemplazar guiones largos (em dash y en dash) con guiones normales
-      .replace(/[\u2013\u2014]/g, "-")
-      // Reemplazar comillas tipográficas con comillas normales
-      .replace(/[\u201C\u201D]/g, '"')
-      .replace(/[\u2018\u2019]/g, "'")
-      // Reemplazar puntos suspensivos con tres puntos
-      .replace(/\u2026/g, "...")
-      // Eliminar otros caracteres problemáticos (fuera del rango ASCII estándar)
-      // pero mantener caracteres latinos extendidos comunes (á, é, í, ó, ú, ñ, etc.)
-      .replace(/[^\x20-\x7E\u00A0-\u00FF\u0100-\u017F]/g, "")
-  );
-}
-
-function getPdfFiles(dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  const pdfs = [];
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      pdfs.push(...getPdfFiles(fullPath));
-    } else if (
-      entry.isFile() &&
-      path.extname(entry.name).toLowerCase() === ".pdf"
-    ) {
-      pdfs.push(fullPath);
-    }
-  }
-  return pdfs;
-}
 
 /**
  * Script para crear un caché de contexto a partir de archivos en un directorio dentro de data/cache_sources.
@@ -65,7 +29,7 @@ function getPdfFiles(dir) {
 async function main() {
   const sourcesDir =
     process.argv[2] || path.resolve(process.cwd(), "data/rules");
-  const displayName = sanitizeString(process.argv[3] || "Context_Cache");
+  const displayName = process.argv[3] || "Context_Cache";
   const model = process.argv[4] || process.env.MODEL_NAME;
   const ttlSeconds = Number(process.argv[5] || 3600);
   const systemInstructionDefault = `
@@ -196,9 +160,7 @@ async function main() {
      Toda discrepancia se reporta literalmente con ambos valores.
   `;
 
-  const systemInstruction = sanitizeString(
-    process.argv[6] || systemInstructionDefault
-  );
+  const systemInstruction = process.argv[6] || systemInstructionDefault;
 
   if (!fs.existsSync(sourcesDir)) {
     console.error(`Directorio no existe: ${sourcesDir}`);
@@ -231,7 +193,7 @@ async function main() {
         file: filePath,
         config: {
           mimeType: mime,
-          displayName: sanitizeString(path.basename(filePath)),
+          displayName: path.basename(filePath),
         },
       });
       console.log(`✓ Listo: ${upload.uri}`);

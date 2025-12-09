@@ -1,4 +1,5 @@
 import { promises as fs } from "fs";
+import fsSync from "fs";
 import path from "path";
 
 /**
@@ -51,10 +52,33 @@ export async function urlToBase64(url) {
   } catch {
     throw new Error("URL inválida");
   }
-  if (!/^https?:$/.test(parsed.protocol)) throw new Error("Protocolo no permitido");
+  if (!/^https?:$/.test(parsed.protocol))
+    throw new Error("Protocolo no permitido");
   const res = await fetch(parsed.toString());
   if (!res.ok)
     throw new Error(`Fallo al descargar: ${res.status} ${res.statusText}`);
   const buf = Buffer.from(await res.arrayBuffer());
   return buf.toString("base64");
+}
+
+/**
+ * Recursivamente obtiene todos los archivos PDF en un directorio
+ * @param {string} dir - Directorio raíz para buscar
+ * @returns {string[]} Array de rutas de archivos PDF
+ */
+export function getPdfFiles(dir) {
+  const entries = fsSync.readdirSync(dir, { withFileTypes: true });
+  const pdfs = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      pdfs.push(...getPdfFiles(fullPath));
+    } else if (
+      entry.isFile() &&
+      path.extname(entry.name).toLowerCase() === ".pdf"
+    ) {
+      pdfs.push(fullPath);
+    }
+  }
+  return pdfs;
 }
