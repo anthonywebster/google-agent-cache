@@ -31,23 +31,49 @@ Un servidor Express listo para chatear con Gemini usando Context Cache: sube tus
 
 ## ⚙️ Instalación rápida
 
+<div align="center">
+  <img src="https://img.shields.io/badge/Instalaci%C3%B3n-F%C3%A1cil-00C853?style=for-the-badge" alt="Instalación fácil" />
+</div>
+
+### 1️⃣ Instala dependencias
+
 ```bash
 npm install
-# Crea .env con tu GEMINI_API_KEY (o copia .env.example si existe)
-# Coloca tus fuentes en data/cache_sources/
 ```
 
-Arranque del servidor:
+### 2️⃣ Crea tu archivo de entorno
+
+```bash
+# Crea .env con tu GEMINI_API_KEY
+cp .env.example .env
+```
+
+### 3️⃣ Coloca tus fuentes
+
+```bash
+# Copia tus archivos (.pdf, .txt, .md, ...) en:
+data/cache_sources/
+```
+
+---
+
+### 🚀 Arranca el servidor
 
 ```bash
 npm run start
 ```
 
-Configurar el caché por CLI (opciones):
+---
+
+### 🛠️ Configura el caché por CLI
 
 ```bash
 npm run setup-cache -- [sourcesDir] [displayName] [model] [ttlSeconds] [systemInstruction]
-# Ejemplo:
+```
+
+Ejemplo:
+
+```bash
 npm run setup-cache -- data/cache_sources "Cache_Experto" models/gemini-2.5-pro 3600 "Eres experto en aduanas..."
 ```
 
