@@ -1,123 +1,54 @@
 import express from "express";
-import multer from "multer";
-import os from "os";
-import { promises as fs } from "fs";
-import path from "path";
 import { genAI } from "../services/google.js";
-import { loadCacheInfo } from "../services/cacheStore.js";
-import { saveMarkdownAnswer, cleanupFiles } from "../utilities/utils.js";
+import { saveMarkdownAnswer, urlToBase64 } from "../utilities/utils.js";
 
 const router = express.Router();
-const upload = multer({ dest: os.tmpdir() });
 
 /**
  * Endpoint: /api/chat
- * metodo: POST
- * Descripción: Permite hacer una pregunta utilizando el caché configurado.
- *
- * @param {string} question (requerido)
- * @param {string} context (opcional)
- * @param {Array} files (opcional) - Array de objetos con { path, mimeType }
- */
-router.post("/", async (req, res) => {
-  try {
-    const { question, context, files } = req.body || {};
-    if (!question)
-      return res.status(400).json({ error: "question is required" });
-
-    const cacheList = await loadCacheInfo();
-    const cacheInfo = Array.isArray(cacheList)
-      ? cacheList[cacheList.length - 1]
-      : cacheList;
-    if (!cacheInfo?.cacheName)
-      return res.status(400).json({
-        error: "Cache not configured. Run POST /api/cache/setup first.",
-      });
-
-    const parts = [];
-
-    // Optional per-request files: [{ path, mimeType, displayName? }]
-    if (Array.isArray(files)) {
-      for (const f of files) {
-        if (!f?.path || !f?.mimeType) continue;
-        const upload = await genAI.files.upload({
-          file: f.path,
-          config: {
-            mimeType: f.mimeType,
-            displayName: f.displayName || "chat-file",
-          },
-        });
-        parts.push({
-          fileData: { mimeType: upload.mimeType, fileUri: upload.uri },
-        });
-      }
-    }
-
-    parts.push({ text: question });
-
-    // Resolve cached content by name
-    const response = await genAI.models.generateContent({
-      model: chosenModel,
-      contents: [{ role: "user", parts }],
-      config: { cachedContent: cacheInfo.cacheName },
-    });
-
-    const text = response?.text || "";
-    return res.json({ answer: text });
-  } catch (err) {
-    console.error("Chat error:", err);
-    const status = err?.status || 500;
-    return res.status(status).json({ error: "Failed to generate answer" });
-  }
-});
-
-/**
- * Endpoint: /api/chat/upload
  * metodo: POST
  * Descripción: Permite subir archivos (PDFs u otros) junto con una pregunta.
  * Utiliza el caché configurado para generar una respuesta basada en los archivos subidos y la pregunta.
  *
  * campos de formulario esperados
  * @param {string} question (requerido)
- * @param {string} context (opcional)
+ * @param {string} cache (opcional)
  * @param {string} model (opcional) modelo a usar, por defecto "models/gemini-2.5-pro"
- * @param {File[]} files archivos: uno o más PDFs u otros tipos compatibles, nombre de campo "files"
+ * @param {File[]} files archivos: uno o más PDFs u otras URLs de documentos
  */
-router.post("/upload", upload.array("files", 10), async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const question = req.body?.question;
-    const context = req.body?.context;
-    const chosenModel = req.body?.model || "models/gemini-2.5-pro";
+    const cache = req.body?.cache || process.env.CACHE_NAME; // valor por defecto para pruebas
+    const files = req.body?.files || [];
+    const chosenModel = req.body?.model || process.env.MODEL_NAME;
+
+    // validar si existe la pregunta
     if (!question) {
-      await cleanupFiles(req.files);
       return res.status(400).json({ error: "question is required" });
     }
 
-    const cacheList = await loadCacheInfo();
-    const cacheInfo = Array.isArray(cacheList)
-      ? cacheList[cacheList.length - 1]
-      : cacheList;
-    if (!cacheInfo?.cacheName) {
-      await cleanupFiles(req.files);
-      return res.status(400).json({
-        error: "Cache not configured. Run POST /api/cache/setup first.",
-      });
+    // validar si el caché existe
+    if (!cache) {
+      return res.status(400).json({ error: "Invalid cache specified" });
     }
 
     const parts = [];
-    if (context) parts.push({ text: context });
 
-    for (const f of req.files || []) {
-      const uploadRes = await genAI.files.upload({
-        file: f.path,
-        config: {
-          mimeType: f.mimetype || "application/octet-stream",
-          displayName: f.originalname || "chat-file",
-        },
-      });
-      parts.push({
-        fileData: { mimeType: uploadRes.mimeType, fileUri: uploadRes.uri },
-      });
+    // Si hay URLs de archivos proporcionadas, pasarlas a base64
+    for (const url of files) {
+      try {
+        const base64Content = await urlToBase64(url);
+        const fileContent = {
+          inlineData: {
+            mimeType: "application/octet-stream", // Tipo MIME genérico para URLs por si acaso vienen imagenes, PDFs, etc.
+            base64: base64Content,
+          },
+        };
+        parts.push(fileContent);
+      } catch (err) {
+        console.error(`Error descargando archivo desde URL ${url}:`, err);
+      }
     }
 
     const promptArmored = `
@@ -131,7 +62,7 @@ router.post("/upload", upload.array("files", 10), async (req, res) => {
     const response = await genAI.models.generateContent({
       model: chosenModel,
       contents: [{ role: "user", parts }],
-      config: { cachedContent: cacheInfo.cacheName },
+      config: { cachedContent: cache },
     });
 
     const text = response.text || "";
@@ -139,11 +70,9 @@ router.post("/upload", upload.array("files", 10), async (req, res) => {
     // solo para previsualización en modo test, guardar la respuesta en markdown
     await saveMarkdownAnswer(text);
 
-    await cleanupFiles(req.files);
     return res.json({ answer: text });
   } catch (err) {
     console.error("Chat upload error:", err);
-    await cleanupFiles(req.files);
     const status = err?.status || 500;
     return res.status(status).json({ error: "Failed to generate answer" });
   }

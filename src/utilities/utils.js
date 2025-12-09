@@ -37,3 +37,24 @@ export async function saveMarkdownAnswer(text) {
     console.error("Error guardando respuesta markdown:", err);
   }
 }
+
+/**
+ * Descarga un documento desde una URL y retorna su contenido en Base64.
+ * @param {string} url - Enlace del documento a convertir
+ * @returns {Promise<string>} Base64 del contenido del archivo
+ */
+export async function urlToBase64(url) {
+  if (!url || typeof url !== "string") throw new Error("URL inválida");
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("URL inválida");
+  }
+  if (!/^https?:$/.test(parsed.protocol)) throw new Error("Protocolo no permitido");
+  const res = await fetch(parsed.toString());
+  if (!res.ok)
+    throw new Error(`Fallo al descargar: ${res.status} ${res.statusText}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  return buf.toString("base64");
+}
