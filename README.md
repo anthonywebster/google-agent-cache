@@ -212,7 +212,3 @@ curl -X POST http://localhost:3000/api/chat \
 - Asegúrate de que el modelo soporte createCachedContent.
 - Si no tienes .env.example, crea .env y añade GEMINI_API_KEY.
 - Puedes recrear el caché cuando caduque usando la CLI.
-
----
-
-Hecho con ❤️ para desarrolladores que necesitan respuestas con contexto persistente. ✨
