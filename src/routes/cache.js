@@ -1,13 +1,10 @@
 import express from "express";
-import dotenv from "dotenv";
 import { genAI } from "../services/google.js";
 import {
   saveCacheInfo,
   loadCacheInfo,
   clearCacheInfo,
 } from "../services/cacheStore.js";
-
-dotenv.config();
 
 const router = express.Router();
 
