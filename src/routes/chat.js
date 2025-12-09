@@ -41,8 +41,8 @@ router.post("/", async (req, res) => {
         const base64Content = await urlToBase64(url);
         const fileContent = {
           inlineData: {
-            mimeType: "application/octet-stream", // Tipo MIME genérico para URLs por si acaso vienen imagenes, PDFs, etc.
-            base64: base64Content,
+            mimeType: "application/pdf",
+            data: base64Content,
           },
         };
         parts.push(fileContent);
@@ -52,7 +52,7 @@ router.post("/", async (req, res) => {
     }
 
     const promptArmored = `
-      Analiza EXCLUSIVAMENTE este documento adjunto (ignora datos de facturas, pedimentos o documentos anteriores que estén en el caché).
+      Analiza EXCLUSIVAMENTE los documentos adjuntos via inlineData.
 
       Tu tarea específica es: ${question}
     `;
