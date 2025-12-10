@@ -1,6 +1,10 @@
 import express from "express";
 import { genAI } from "../services/google.js";
-import { saveMarkdownAnswer, urlToBase64 } from "../utilities/utils.js";
+import {
+  saveMarkdownAnswer,
+  systemInstructionDefault,
+  urlToBase64,
+} from "../utilities/utils.js";
 
 const router = express.Router();
 
@@ -19,18 +23,12 @@ const router = express.Router();
 router.post("/", async (req, res) => {
   try {
     const question = req.body?.question;
-    const cache = req.body?.cache || process.env.CACHE_NAME; // valor por defecto para pruebas
     const files = req.body?.files || [];
     const chosenModel = req.body?.model || process.env.MODEL_NAME;
 
     // validar si existe la pregunta
     if (!question) {
       return res.status(400).json({ error: "question is required" });
-    }
-
-    // validar si el caché existe
-    if (!cache) {
-      return res.status(400).json({ error: "Invalid cache specified" });
     }
 
     const parts = [];
@@ -62,14 +60,16 @@ router.post("/", async (req, res) => {
 
     const response = await genAI.models.generateContent({
       model: chosenModel,
-      contents: [{ role: "user", parts }],
-      config: { cachedContent: cache },
+      contents: [
+        { role: "model", parts: [{ text: systemInstructionDefault }] },
+        { role: "user", parts },
+      ],
     });
 
     const text = response.text || "";
 
     // solo para previsualización en modo test, guardar la respuesta en markdown
-    await saveMarkdownAnswer(text);
+    // await saveMarkdownAnswer(text);
 
     return res.json({ answer: text });
   } catch (err) {
