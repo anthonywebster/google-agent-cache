@@ -161,9 +161,27 @@ export const systemInstructionDefault = `
 
     2. Certificado Fitosanitario Internacional:
        Validar País de Origen vs 'P.V/C'.
-       MARCAS DISTINTIVAS (Regla Crítica):
-        A. Marca del Fito (ej. FULL MOON) debe aparecer idéntica en el pedimento.
-        B. Si el Fito declara N/A, vacío o guiones - el pedimento no debe declarar marca.
+       MARCAS DISTINTIVAS (Regla Crítica y Normalización):
+        A. Coincidencia estricta:
+          - La "Marca Distintiva" declarada en el FITO debe aparecer idéntica en el pedimento (mismo texto, sin correcciones ni abreviaciones).
+          - Normalizar solo para comparar (no para presentar): trim de espacios, colapsar múltiples espacios, remover espacios antes/después de guiones.
+          - No cambiar mayúsculas/minúsculas al presentar; reportar tal cual. Para comparación, permitir insensibilidad a mayúsculas/minúsculas y espacios redundantes.
+        B. Casos de ausencia de marca en FITO (declaración vacía):
+          - Considerar como "ausencia" los siguientes valores en FITO: "N/A", "N.A.", "NA", "N . A .", vacío (string vacío), solo espacios, guiones ("-", "--", "---"), "S/D", "SIN DATO".
+          - Si el FITO declara ausencia de marca, el pedimento NO debe declarar ninguna marca en campos de marca/observaciones relacionados.
+          - Si el pedimento no incluye ningún campo/encabezado visible de "Marca" (o equivalente), esto es COINCIDE cuando el FITO indica ausencia.
+          - Si el pedimento declara una marca cuando FITO está ausente: DISCREPANCIA.
+        C. Casos de presencia de marca en FITO:
+          - Si el FITO declara una marca (texto no vacío tras normalización), el pedimento debe declarar la MISMA marca.
+          - Si el pedimento está vacío, N/A o guiones mientras FITO tiene marca: DISCREPANCIA.
+        D. Reglas de comparación y reporte:
+          - Comparar tras normalización básica: trim, colapso de espacios, comparar case-insensitive; pero mostrar los valores originales en el reporte.
+          - Buscar en el pedimento el MISMO texto de marca declarado en el FITO (tras la misma normalización). Si ese texto no aparece en el pedimento: DISCREPANCIA.
+          - No corregir ortografía, puntuación ni acentos; reportar diferencias literalmente.
+          - Ejemplos de normalización aceptada para comparación: "FULL   MOON" ≈ "Full Moon"; "ACME-FOODS" ≈ "ACME - FOODS". Si difiere el contenido (palabras distintas), marcar DISCREPANCIA.
+        E. Ubicación en pedimento:
+          - Verificar la marca en los campos correspondientes del pedimento (por ejemplo: encabezado/observaciones, identificadores/observaciones de permiso, o campo específico de "MARCA" si existe en el formato usado).
+          - Documentar el campo exacto utilizado para el cruce en el reporte.
 
     REGLA MAESTRA: ORIGEN Y PREFERENCIAS (CERTIFICADO DE ORIGEN)
     1. Validación de Tratado:
@@ -218,3 +236,50 @@ export const systemInstructionDefault = `
      Nunca usar documentos anteriores como fuente sin instrucción explícita.
      Toda discrepancia se reporta literalmente con ambos valores.
   `;
+
+/**
+ * Carga imágenes de referencia desde data/reference-images y las devuelve como partes inlineData
+ * compatibles con Gemini.
+ * @returns {Promise<Array<{inlineData:{mimeType:string,data:string}}>>}
+ */
+export async function getReferenceImageParts() {
+  const refDir = path.join(process.cwd(), "data", "reference-images");
+  let entries = [];
+  try {
+    entries = await fs.readdir(refDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const files = entries
+    .filter((e) => e.isFile())
+    .map((e) => path.join(refDir, e.name));
+
+  const mimeFromExt = (ext) => {
+    switch (ext) {
+      case ".png":
+        return "image/png";
+      case ".jpg":
+      case ".jpeg":
+        return "image/jpeg";
+      case ".webp":
+        return "image/webp";
+      case ".gif":
+        return "image/gif";
+      case ".svg":
+        return "image/svg+xml";
+      default:
+        return "application/octet-stream";
+    }
+  };
+
+  const parts = [];
+  for (const file of files) {
+    try {
+      const buf = await fs.readFile(file);
+      const b64 = buf.toString("base64");
+      const ext = path.extname(file).toLowerCase();
+      parts.push({ inlineData: { mimeType: mimeFromExt(ext), data: b64 } });
+    } catch {}
+  }
+  return parts;
+}
