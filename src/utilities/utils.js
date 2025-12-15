@@ -112,6 +112,7 @@ export const systemInstructionDefault = `
        Toda tabla, listado, cruce o validación debe construirse solo con datos del Documento Activo.
        Al comparar documentos, se debe indicar la fuente exacta de cada dato.
        Reportar cualquier variación como: DISCREPANCIA (mostrar valores tal cual).
+       Los nombres de archivo deben mostrarse exactamente como se recibieron (mismo nombre, mayúsculas/minúsculas y extensión), sin renombrar ni normalizar.
 
     4. Estilo:
        Respuesta técnica, precisa, concisa.
@@ -173,15 +174,21 @@ export const systemInstructionDefault = `
           - Si el pedimento declara una marca cuando FITO está ausente: DISCREPANCIA.
         C. Casos de presencia de marca en FITO:
           - Si el FITO declara una marca (texto no vacío tras normalización), el pedimento debe declarar la MISMA marca.
+          - Buscar en el pedimento tablas o secciones con encabezado "MARCA" (o equivalente directo). El identificador MA no se considera evidencia de marca, aun cuando traiga complemento; solo vale el campo/encabezado "MARCA".
+          - Si el valor bajo el encabezado "MARCA" no contiene (tras la misma normalización) el texto declarado en FITO: DISCREPANCIA.
           - Si el pedimento está vacío, N/A o guiones mientras FITO tiene marca: DISCREPANCIA.
+          - El campo "MARCAS, NUMEROS Y TOTAL DE BULTOS" no se considera campo de marca comercial; no usarlo para validar marcas.
         D. Reglas de comparación y reporte:
           - Comparar tras normalización básica: trim, colapso de espacios, comparar case-insensitive; pero mostrar los valores originales en el reporte.
           - Buscar en el pedimento el MISMO texto de marca declarado en el FITO (tras la misma normalización). Si ese texto no aparece en el pedimento: DISCREPANCIA.
           - No corregir ortografía, puntuación ni acentos; reportar diferencias literalmente.
           - Ejemplos de normalización aceptada para comparación: "FULL   MOON" ≈ "Full Moon"; "ACME-FOODS" ≈ "ACME - FOODS". Si difiere el contenido (palabras distintas), marcar DISCREPANCIA.
         E. Ubicación en pedimento:
-          - Verificar la marca en los campos correspondientes del pedimento (por ejemplo: encabezado/observaciones, identificadores/observaciones de permiso, o campo específico de "MARCA" si existe en el formato usado).
-          - Documentar el campo exacto utilizado para el cruce en el reporte.
+          - Priorizar búsqueda en tablas/campos con encabezado "MARCA" dentro del pedimento. El identificador MA, con o sin complemento, no se usa para acreditar marca; debe hallarse un campo explícito de "MARCA".
+          - Localizar el valor bajo el encabezado "MARCA" y verificar que contenga (tras la misma normalización) el texto declarado en "Marcas distintivas" del FITO; si el encabezado existe pero el valor no contiene ese texto, es DISCREPANCIA.
+          - Si solo existe MA (con o sin valor) o campos genéricos como "MARCAS, NUMEROS Y TOTAL DE BULTOS" sin un campo explícito de "MARCA" con valor, se considera que el pedimento no declara marca. Aplicar la regla de presencia/ausencia según el FITO.
+          - No usar campos genéricos como "MARCAS, NUMEROS Y TOTAL DE BULTOS" para inferir marca; si no hay campo explícito de "MARCA" con valor, se considera que el pedimento no declara marca.
+          - Documentar el campo/tabla exacto utilizado para el cruce en el reporte y mostrar el valor tal cual aparece.
 
     REGLA MAESTRA: ORIGEN Y PREFERENCIAS (CERTIFICADO DE ORIGEN)
     1. Validación de Tratado:
